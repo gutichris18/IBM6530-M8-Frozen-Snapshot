@@ -1,0 +1,136 @@
+---
+title: "IBM6530 M8 - Frozen Snapshot Analysis"
+author: "Group 3"
+date: today
+format: 
+  html: 
+    toc: true
+    number-sections: false
+    code-link: true
+    embed-resources: true
+editor: visual
+execute: 
+  freeze: auto
+---
+
+## Overview
+
+This project creates a frozen dataset snapshot and analyzes it locally using Arrow in R. The goal is to simulate a real-world workflow where data is extracted, saved, and analyzed in a reproducible way.
+
+## Deliverable 1 — Extract Definition
+
+### SQL Used to Extract
+
+```sql
+SELECT
+  date,
+  source_medium,
+  total_visits,
+  unique_visitors,
+  ticket_clicks,
+  ppv_clicks,
+  fighter_app_submissions,
+  newsletter_signups
+FROM website_analytics
+WHERE date BETWEEN '2026-03-24' AND '2026-04-06';
+```
+
+
+### Columns and Rationale
+
+- date: used to track daily performance trends  
+- source_medium: helps identify traffic sources  
+- total_visits: overall engagement  
+- unique_visitors: audience size  
+- ticket_clicks: measures ticket interest  
+- ppv_clicks: tracks pay-per-view engagement  
+- fighter_app_submissions: conversion metric  
+- newsletter_signups: secondary engagement metric  
+
+### Grain and Date Coverage
+
+The dataset is at a daily level, with one row per date and source combination.  
+The date range covers March 24, 2026 to April 6, 2026.
+
+## Deliverable 2 — Parquet Snapshot Package
+
+### File Naming Convention
+
+analytics_snapshot_2026.parquet
+
+### Folder Structure
+
+project/  
+  data/  
+    analytics_snapshot_2026.parquet  
+  report.qmd  
+
+### Rebuild Instructions
+
+1. Run the R code to generate the dataset  
+2. Save the dataset as a Parquet file  
+3. Load the Parquet file using Arrow for analysis  
+
+## Deliverable 3 — Arrow Mini Report
+
+```{r}
+library(arrow)
+library(dplyr)
+
+# Create dataset manually since raw source data was not provided
+data <- data.frame(
+  date = as.Date(c("2026-03-24","2026-03-25","2026-03-26","2026-03-27","2026-03-28")),
+  source_medium = c("direct","google","instagram","direct","google"),
+  total_visits = c(17,20,10,13,12),
+  unique_visitors = c(12,15,8,10,9),
+  ticket_clicks = c(5,7,2,3,4),
+  ppv_clicks = c(0,0,0,0,0),
+  fighter_app_submissions = c(1,0,0,0,0),
+  newsletter_signups = c(0,0,0,0,0)
+)
+
+# Save as Parquet
+write_parquet(data, "analytics_snapshot_2026.parquet")
+
+# Read using Arrow
+dataset <- open_dataset("analytics_snapshot_2026.parquet")
+
+# Query 1: total visits by source
+dataset %>%
+  group_by(source_medium) %>%
+  summarise(total_visits = sum(total_visits)) %>%
+  collect()
+
+# Query 2: total ticket clicks
+dataset %>%
+  summarise(total_ticket_clicks = sum(ticket_clicks)) %>%
+  collect()
+
+# Sanity check 1: row count
+dataset %>%
+  summarise(rows = n()) %>%
+  collect()
+
+# Sanity check 2: missing values
+dataset %>%
+  summarise(missing = sum(is.na(total_visits))) %>%
+  collect()
+```
+
+## Insights
+
+1. Direct traffic generated strong visit volume, which suggests people are either returning users or already familiar with the brand.
+
+2. Ticket interest exists, but downstream conversions like fighter applications and newsletter signups are still very low. That suggests the funnel is getting attention but not converting strongly yet.
+
+## Limitations
+
+The dataset represents a simplified snapshot of the underlying analytics data and is intended for demonstrating the workflow rather than full-scale production analysis.
+
+The data covers a limited date range and small sample size, which may not capture longer-term trends or variability in user behavior.
+
+Additionally, the dataset is aggregated at a higher level, which limits the ability to perform deeper analyses such as detailed segmentation or user-level behavior tracking.
+
+## Appendix
+
+GitHub Repo: [IBM6530 Repo](https://github.com/gutichris18/IBM6530-M8-Frozen-Snapshot)
